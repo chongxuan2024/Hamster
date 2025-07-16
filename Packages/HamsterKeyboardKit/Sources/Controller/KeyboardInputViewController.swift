@@ -117,6 +117,11 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
       keyboardRootView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       keyboardRootView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
     ])
+    
+    // 设置自定义动作处理器的KeyboardRootView引用
+    if let hamsterActionHandler = keyboardActionHandler as? HamsterKeyboardActionHandler {
+      hamsterActionHandler.keyboardRootView = keyboardRootView
+    }
   }
 
   deinit {
@@ -341,7 +346,7 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
 
    您可以用自定义实现来替代它。
    */
-  public lazy var keyboardActionHandler: KeyboardActionHandler = StandardKeyboardActionHandler(
+  public lazy var keyboardActionHandler: KeyboardActionHandler = HamsterKeyboardActionHandler(
     controller: self,
     keyboardContext: keyboardContext,
     rimeContext: rimeContext,

@@ -151,6 +151,37 @@ class KeyboardRootView: NibLessView {
     return view
   }()
 
+  /// 功能工具栏
+  private lazy var functionToolbarView: UIView = {
+    let view = KeyboardFunctionToolbarView(appearance: appearance, actionHandler: actionHandler, keyboardContext: keyboardContext, rimeContext: rimeContext)
+    view.translatesAutoresizingMaskIntoConstraints = false
+    return view
+  }()
+
+  /// 剪贴板管理视图
+  private lazy var clipboardManagerView: UIView = {
+    let view = ClipboardManagerView(appearance: appearance, actionHandler: actionHandler, keyboardContext: keyboardContext)
+    view.translatesAutoresizingMaskIntoConstraints = false
+    view.isHidden = true
+    return view
+  }()
+
+  /// 常用词汇管理视图
+  private lazy var commonWordsManagerView: UIView = {
+    let view = CommonWordsManagerView(appearance: appearance, actionHandler: actionHandler, keyboardContext: keyboardContext)
+    view.translatesAutoresizingMaskIntoConstraints = false
+    view.isHidden = true
+    return view
+  }()
+
+  /// 知识库管理视图
+  private lazy var knowledgeBaseManagerView: UIView = {
+    let view = KnowledgeBaseManagerView(appearance: appearance, actionHandler: actionHandler, keyboardContext: keyboardContext)
+    view.translatesAutoresizingMaskIntoConstraints = false
+    view.isHidden = true
+    return view
+  }()
+
   /// 主键盘
   private lazy var primaryKeyboardView: UIView = {
     if let view = chooseKeyboard(keyboardType: keyboardContext.keyboardType) {
@@ -231,7 +262,13 @@ class KeyboardRootView: NibLessView {
   override func constructViewHierarchy() {
     if keyboardContext.enableToolbar {
       addSubview(toolbarView)
+      addSubview(functionToolbarView)
       addSubview(primaryKeyboardView)
+      
+      // 添加功能管理视图
+      addSubview(clipboardManagerView)
+      addSubview(commonWordsManagerView)
+      addSubview(knowledgeBaseManagerView)
     } else {
       addSubview(primaryKeyboardView)
     }
@@ -263,21 +300,42 @@ class KeyboardRootView: NibLessView {
     return [
       toolbarView.topAnchor.constraint(equalTo: topAnchor),
       toolbarView.leadingAnchor.constraint(equalTo: leadingAnchor),
-      toolbarView.trailingAnchor.constraint(equalTo: trailingAnchor)
+      toolbarView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      
+      functionToolbarView.topAnchor.constraint(equalTo: toolbarView.bottomAnchor),
+      functionToolbarView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      functionToolbarView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      functionToolbarView.heightAnchor.constraint(equalToConstant: 52),
+      
+      // 功能管理视图约束 - 覆盖整个键盘区域
+      clipboardManagerView.topAnchor.constraint(equalTo: functionToolbarView.bottomAnchor),
+      clipboardManagerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      clipboardManagerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      clipboardManagerView.bottomAnchor.constraint(equalTo: bottomAnchor),
+      
+      commonWordsManagerView.topAnchor.constraint(equalTo: functionToolbarView.bottomAnchor),
+      commonWordsManagerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      commonWordsManagerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      commonWordsManagerView.bottomAnchor.constraint(equalTo: bottomAnchor),
+      
+      knowledgeBaseManagerView.topAnchor.constraint(equalTo: functionToolbarView.bottomAnchor),
+      knowledgeBaseManagerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      knowledgeBaseManagerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      knowledgeBaseManagerView.bottomAnchor.constraint(equalTo: bottomAnchor)
     ]
   }
 
   /// 工具栏展开时动态约束
   func createToolbarExpandDynamicConstraints() -> [NSLayoutConstraint] {
     return [
-      toolbarView.bottomAnchor.constraint(equalTo: bottomAnchor)
+      functionToolbarView.bottomAnchor.constraint(equalTo: bottomAnchor)
     ]
   }
 
   /// 工具栏收缩时动态约束
   func createToolbarCollapseDynamicConstraints() -> [NSLayoutConstraint] {
     return [
-      primaryKeyboardView.topAnchor.constraint(equalTo: toolbarView.bottomAnchor),
+      primaryKeyboardView.topAnchor.constraint(equalTo: functionToolbarView.bottomAnchor),
       primaryKeyboardView.bottomAnchor.constraint(equalTo: bottomAnchor),
       primaryKeyboardView.leadingAnchor.constraint(equalTo: leadingAnchor),
       primaryKeyboardView.trailingAnchor.constraint(equalTo: trailingAnchor)
@@ -369,6 +427,11 @@ class KeyboardRootView: NibLessView {
 
           primaryKeyboardView = keyboardView
           addSubview(primaryKeyboardView)
+          
+          // 确保功能管理视图在前面
+          bringSubviewToFront(clipboardManagerView)
+          bringSubviewToFront(commonWordsManagerView)
+          bringSubviewToFront(knowledgeBaseManagerView)
 
           // 工具栏收缩时约束
           toolbarCollapseDynamicConstraints = createToolbarCollapseDynamicConstraints()
