@@ -110,6 +110,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1A26D5A12E2CEF52006107A1 /* HamsterKeyboardDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HamsterKeyboardDebug.entitlements; sourceTree = "<group>"; };
 		C000CA9D296EA72600EC5323 /* HamsterKeyboardInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HamsterKeyboardInputViewController.swift; sourceTree = "<group>"; };
 		C00749622ABAD48C00C5CD0A /* HamsterFileServer */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = HamsterFileServer; path = Packages/HamsterFileServer; sourceTree = "<group>"; };
 		C00C26BB2B069D6900E92F89 /* boost_filesystem.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = boost_filesystem.xcframework; sourceTree = "<group>"; };
@@ -318,6 +319,7 @@
 		C03E803D296D53650083E53A /* HamsterKeyboard */ = {
 			isa = PBXGroup;
 			children = (
+				1A26D5A12E2CEF52006107A1 /* HamsterKeyboardDebug.entitlements */,
 				C071BECB2970072100E21FBC /* HamsterKeyboard.entitlements */,
 				C03E8040296D53650083E53A /* Info.plist */,
 				C000CA9D296EA72600EC5323 /* HamsterKeyboardInputViewController.swift */,
@@ -755,10 +757,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Hamster/HamsterDebug.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Hamster/Assets/Preview Content\"";
-				DEVELOPMENT_TEAM = M4N6995A28;
+				DEVELOPMENT_TEAM = VLX82QYQR5;
 				ENABLE_BITCODE = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -780,8 +783,9 @@
 				);
 				MARKETING_VERSION = 3.0.0;
 				OTHER_LDFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = dev.fuxiao.app.Hamster;
+				PRODUCT_BUNDLE_IDENTIFIER = dev2.fuxiao.app.Hamster2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRIP_STYLE = "non-global";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -840,10 +844,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = HamsterKeyboard/HamsterKeyboard.entitlements;
+				CODE_SIGN_ENTITLEMENTS = HamsterKeyboard/HamsterKeyboardDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M4N6995A28;
+				DEVELOPMENT_TEAM = VLX82QYQR5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HamsterKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = HamsterKeyboard;
@@ -857,7 +861,7 @@
 				);
 				MARKETING_VERSION = 3.0.0;
 				OTHER_LDFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = dev.fuxiao.app.Hamster.HamsterKeyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = dev2.fuxiao.app.Hamster2.HamsterKeyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRIP_STYLE = "non-global";
@@ -903,9 +907,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SbxlmKeyboard/SbxlmKeyboard.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M4N6995A28;
+				DEVELOPMENT_TEAM = VLX82QYQR5;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SbxlmKeyboard/Info.plist;
@@ -920,8 +925,9 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 3.0.0;
 				OTHER_LDFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = dev.fuxiao.app.Hamster.SbxlmKeyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = dev2.fuxiao.app.Hamster2.SbxlmKeyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				STRIP_STYLE = "non-global";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";

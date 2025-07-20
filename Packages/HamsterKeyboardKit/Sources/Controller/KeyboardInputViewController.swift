@@ -117,6 +117,9 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
       keyboardRootView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       keyboardRootView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
     ])
+    
+    // 保存键盘根视图的引用以便后续访问AI查询功能
+    self.keyboardRootView = keyboardRootView
   }
 
   deinit {
@@ -162,6 +165,11 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
   open var mainTextDocumentProxy: UITextDocumentProxy {
     super.textDocumentProxy
   }
+
+  /**
+   键盘根视图引用，用于访问工具栏的AI查询功能
+   */
+  private var keyboardRootView: KeyboardRootView?
 
   /**
    The text document proxy to use, which can either be the
@@ -332,34 +340,34 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
   }
 
   /**
-   The action handler that will be used by the keyboard to
-   handle keyboard actions.
+   The keyboard action handler to use.
 
-   用于处理按键 action 的 action 处理程序。
-
-   You can replace this with a custom implementation.
-
-   您可以用自定义实现来替代它。
+   要使用的键盘动作处理程序。
    */
-  public lazy var keyboardActionHandler: KeyboardActionHandler = StandardKeyboardActionHandler(
-    controller: self,
-    keyboardContext: keyboardContext,
-    rimeContext: rimeContext,
-    keyboardBehavior: keyboardBehavior,
-    autocompleteContext: autocompleteContext,
-    keyboardFeedbackHandler: keyboardFeedbackHandler,
-    spaceDragGestureHandler: SpaceCursorDragGestureHandler(
-      feedbackHandler: keyboardFeedbackHandler,
-      sensitivity: .custom(points: keyboardContext.hamsterConfiguration?.swipe?.spaceDragSensitivity ?? 5),
-      action: { [weak self] in
-        guard let self = self else { return }
-        let offset = self.textDocumentProxy.spaceDragOffset(for: $0)
-        self.adjustTextPosition(byCharacterOffset: offset ?? $0)
-      }
+  public lazy var keyboardActionHandler: KeyboardActionHandler = {
+    let handler = AIAwareKeyboardActionHandler(
+      controller: self,
+      keyboardContext: self.keyboardContext,
+      rimeContext: self.rimeContext,
+      keyboardBehavior: self.keyboardBehavior,
+      autocompleteContext: self.autocompleteContext,
+      keyboardFeedbackHandler: self.keyboardFeedbackHandler,
+      spaceDragGestureHandler: self.spaceDragGestureHandler
     )
-  ) {
-    didSet { refreshProperties() }
-  }
+    
+    // 设置AI查询输入处理回调
+    if let aiHandler = handler as? AIAwareKeyboardActionHandler {
+      aiHandler.aiInputHandler = { [weak self] character in
+        guard let self = self,
+              let rootView = self.keyboardRootView else { return false }
+        
+        // 将键盘输入路由到KeyboardRootView的AI查询功能
+        return rootView.handleKeyInput(character)
+      }
+    }
+    
+    return handler
+  }()
 
   /**
    The appearance that is used to customize the keyboard's
@@ -396,6 +404,22 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
    您可以用自定义实现来替代它。
    */
   public lazy var keyboardFeedbackHandler: KeyboardFeedbackHandler = StandardKeyboardFeedbackHandler(settings: keyboardFeedbackSettings)
+
+  /**
+   The space drag gesture handler that is used to handle space drag gestures.
+
+   用于处理空格拖拽手势的处理程序。
+
+   You can replace this with a custom implementation.
+
+   您可以用自定义实现来替代它。  
+   */
+  public lazy var spaceDragGestureHandler: DragGestureHandler = SpaceCursorDragGestureHandler(
+    feedbackHandler: keyboardFeedbackHandler,
+    action: { [weak self] offset in
+      self?.adjustTextPosition(byCharacterOffset: offset)
+    }
+  )
 
   /**
    This keyboard layout provider that is used to setup the
@@ -894,6 +918,17 @@ private extension KeyboardInputViewController {
             commitText = commitText.replaceT9pinyin
           }
 
+          // 检查是否为AI查询模式，如果是则路由到AIQueryView
+          if let aiHandler = self.keyboardActionHandler as? AIAwareKeyboardActionHandler,
+             let rootView = self.keyboardRootView {
+            // 通过AIAwareKeyboardActionHandler的回调将文本路由到AIQueryView
+            if let callback = aiHandler.aiInputHandler, callback(commitText) {
+              Logger.statistics.debug("KeyboardInputViewController: RIME提交文本已路由到AIQueryView: '\(commitText)'")
+              return // 已被AI查询视图处理，不再发送到主应用
+            }
+          }
+
+          // 如果不是AI查询模式或AI查询视图未处理，则正常发送到主应用
           self.textDocumentProxy.setMarkedText("", selectedRange: NSRange(location: 0, length: 0))
 
           // 写入 userInputKey
