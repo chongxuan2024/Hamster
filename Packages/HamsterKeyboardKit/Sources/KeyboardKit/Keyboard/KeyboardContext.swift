@@ -516,7 +516,9 @@ public class KeyboardContext: ObservableObject {
 
   // 空格按钮加载文本
   var loadingTextForSpaceButton: String {
-    hamsterConfiguration?.keyboard?.loadingTextForSpaceButton ?? ""
+//    hamsterConfiguration?.keyboard?.loadingTextForSpaceButton ?? ""
+      return "AI 输入法"
+      
   }
 
   // 空格按钮长显文本
