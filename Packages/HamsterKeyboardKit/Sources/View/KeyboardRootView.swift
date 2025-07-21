@@ -547,4 +547,12 @@ class KeyboardRootView: NibLessView {
 //    tempKeyboardViewCache[keyboardType] = tempKeyboardView
     return tempKeyboardView
   }
+  
+  // MARK: - Public Methods
+  
+  /// 获取AI查询视图是否正在显示
+  /// - Returns: 如果AI查询视图正在显示则返回true，否则返回false
+  public func isAIQueryViewDisplaying() -> Bool {
+    return isAIQueryViewVisible || (!aiQueryView.isHidden && aiQueryView.alpha > 0)
+  }
 }

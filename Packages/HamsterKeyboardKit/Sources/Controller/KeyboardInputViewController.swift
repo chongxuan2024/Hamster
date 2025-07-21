@@ -492,7 +492,10 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
   }
 
   open func deleteBackward() {
-      // TODO 如果的AIVIEW，忽略
+    // 如果AI查询视图正在显示，忽略删除操作
+    if let rootView = keyboardRootView, rootView.isAIQueryViewDisplaying() {
+      return
+    }
       
     guard !rimeContext.userInputKey.isEmpty else {
       // 获取光标前后上下文，用于删除需要光标居中的符号
