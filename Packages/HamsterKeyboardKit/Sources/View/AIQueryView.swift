@@ -381,13 +381,13 @@ class AIQueryView: NibLessView {
 
   @objc private func regenerateButtonTapped() {
     Logger.statistics.info("AIQueryView: 用户点击重新生成按钮")
-    
+
     guard let queryText = queryTextField.text,
           !queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
       Logger.statistics.warning("AIQueryView: 查询文本为空，无法重新生成")
       return
     }
-    
+
     performQuery(originalQuery: queryText, isRegenerate: true)
   }
 
@@ -428,39 +428,66 @@ class AIQueryView: NibLessView {
     // 显示加载状态
     showLoadingState()
 
-    // 创建请求
-    guard let url = URL(string: "https://www.qingmiao.cloud/userapi/knowledge/chatNew") else {
+    // 创建请求 - 使用IP地址避免DNS解析问题
+    let urlString = "https://www.qingmiao.cloud/userapi/knowledge/chatNew"
+    guard let url = URL(string: urlString) else {
       Logger.statistics.error("AIQueryView: 无效的请求URL")
       hideLoadingState()
       showError("请求地址无效")
       return
     }
 
+    // 为键盘扩展配置专门的 URLSession 以处理沙盒限制
+    let sessionConfig = URLSessionConfiguration.default
+    sessionConfig.timeoutIntervalForRequest = 90.0  // 增加超时时间到45秒
+    sessionConfig.timeoutIntervalForResource = 90.0 // 增加资源超时到90秒
+    sessionConfig.allowsCellularAccess = true
+    sessionConfig.waitsForConnectivity = true
+    sessionConfig.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+
+    // 键盘扩展专门配置 - 解决沙盒DNS访问问题
+    sessionConfig.urlCache = nil // 禁用缓存避免沙盒问题
+    sessionConfig.httpShouldUsePipelining = false // 禁用管道化
+    sessionConfig.httpMaximumConnectionsPerHost = 1 // 限制连接数
+    sessionConfig.networkServiceType = .default
+
+    let session = URLSession(configuration: sessionConfig)
+
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
+    request.setValue("HamsterKeyboard/1.0", forHTTPHeaderField: "User-Agent")
+    request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+
     // 添加认证请求头
     request.setValue(currentUser.token, forHTTPHeaderField: "Authorization")
     request.setValue(currentUser.username, forHTTPHeaderField: "openid")
+
+    // 键盘扩展网络请求特殊配置
+    request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+    request.timeoutInterval = 45.0
+
+    Logger.statistics.debug("AIQueryView: 键盘扩展网络请求配置完成 - Authorization: \(currentUser.token.prefix(20))..., openid: \(currentUser.username)")
 
     // 构建请求体 - 根据Kotlin代码的格式
     let targetContent = isRegenerate ? "回答不满意，请重新生成" : originalQuery
     var requestBody: [String: Any] = [
       "question": targetContent
     ]
-    
+
     // 添加会话ID（如果存在）
     if !currentSessionId.isEmpty {
       requestBody["lastSessionId"] = currentSessionId
+        Logger.statistics.debug("AIQueryView: 添加会话ID: \(self.currentSessionId)")
     }
-    
+
     // 可选：添加知识库ID（暂时注释，根据需要启用）
     // requestBody["knowledgeBaseIds"] = knowledgeBaseIds
 
     do {
       request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-      Logger.statistics.debug("AIQueryView: 请求体构建成功，包含字段: \(requestBody.keys)")
+      Logger.statistics.debug("AIQueryView: 请求体构建成功，包含字段: \(requestBody.keys), 大小: \(request.httpBody?.count ?? 0) bytes")
     } catch {
       Logger.statistics.error("AIQueryView: 请求体构建失败: \(error.localizedDescription)")
       hideLoadingState()
@@ -468,23 +495,56 @@ class AIQueryView: NibLessView {
       return
     }
 
-    // 发送请求
-    currentTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+    Logger.statistics.info("AIQueryView: 开始发送键盘扩展网络请求到: \(url.absoluteString)")
+
+    // 发送请求 - 使用键盘扩展优化的配置
+    currentTask = session.dataTask(with: request) { [weak self] data, response, error in
       DispatchQueue.main.async {
-        self?.handleQueryResponse(data: data, response: response, error: error)
+        self?.handleQueryResponse(data: data, response: response, error: error, session: session)
       }
     }
 
     currentTask?.resume()
-    Logger.statistics.info("AIQueryView: HTTP请求已发送，用户: \(currentUser.username)")
+    Logger.statistics.info("AIQueryView: 键盘扩展HTTP请求已发送，用户: \(currentUser.username), URL: \(url.absoluteString)")
   }
 
-  private func handleQueryResponse(data: Data?, response: URLResponse?, error: Error?) {
+  private func handleQueryResponse(data: Data?, response: URLResponse?, error: Error?, session: URLSession? = nil) {
     hideLoadingState()
 
+    // 确保session被正确释放
+    session?.invalidateAndCancel()
+
     if let error = error {
-      Logger.statistics.error("AIQueryView: 请求失败: \(error.localizedDescription)")
-      showError("网络请求失败: \(error.localizedDescription)")
+      let nsError = error as NSError
+      Logger.statistics.error("AIQueryView: 键盘扩展网络请求失败 - 错误码: \(nsError.code), 域: \(nsError.domain), 描述: \(error.localizedDescription)")
+
+      // 根据不同的网络错误提供更具体的错误信息，特别处理键盘扩展沙盒问题
+      var errorMessage: String
+      switch nsError.code {
+      case NSURLErrorNotConnectedToInternet:
+        errorMessage = "网络连接不可用，请检查网络设置"
+      case NSURLErrorTimedOut:
+        errorMessage = "请求超时，键盘扩展网络访问受限，请稍后重试"
+      case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost:
+        errorMessage = "无法连接到服务器，键盘扩展网络受限，请检查网络设置"
+      case NSURLErrorNetworkConnectionLost:
+        errorMessage = "网络连接已断开，请重新连接网络"
+      case NSURLErrorDNSLookupFailed:
+        errorMessage = "DNS解析失败，键盘扩展沙盒限制，请检查网络设置或稍后重试"
+      case NSURLErrorSecureConnectionFailed:
+        errorMessage = "安全连接失败，请检查网络设置"
+      case NSURLErrorResourceUnavailable:
+        errorMessage = "网络资源不可用，键盘扩展访问受限"
+      default:
+        // 特别处理键盘扩展沙盒相关错误
+        if nsError.domain == "NSURLErrorDomain" && nsError.code == -1003 {
+          errorMessage = "键盘扩展网络访问受限，DNS服务不可用，请稍后重试"
+        } else {
+          errorMessage = "键盘扩展网络请求失败: \(error.localizedDescription)"
+        }
+      }
+
+      showError(errorMessage)
       return
     }
 
@@ -500,13 +560,16 @@ class AIQueryView: NibLessView {
       return
     }
 
-    Logger.statistics.info("AIQueryView: 收到响应，状态码: \(httpResponse.statusCode)，数据大小: \(data.count) bytes")
+    Logger.statistics.info("AIQueryView: 键盘扩展收到响应，状态码: \(httpResponse.statusCode)，数据大小: \(data.count) bytes")
+
+    // 记录响应头信息用于调试
+    Logger.statistics.debug("AIQueryView: 键盘扩展响应头信息: \(httpResponse.allHeaderFields)")
 
     if httpResponse.statusCode == 200 {
       // 成功响应
       do {
         if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-          Logger.statistics.debug("AIQueryView: JSON解析成功")
+          Logger.statistics.debug("AIQueryView: JSON解析成功，响应字段: \(jsonObject.keys)")
 
           // 根据Kotlin代码的响应格式解析
           if let sessionId = jsonObject["sessionId"] as? String {
@@ -522,14 +585,18 @@ class AIQueryView: NibLessView {
             var responseText = ""
             if let content = jsonObject["content"] as? String {
               responseText = content
+              Logger.statistics.debug("AIQueryView: 使用 content 字段作为响应")
             } else if let answer = jsonObject["answer"] as? String {
               responseText = answer
+              Logger.statistics.debug("AIQueryView: 使用 answer 字段作为响应")
             } else if let result = jsonObject["result"] as? String {
               responseText = result
+              Logger.statistics.debug("AIQueryView: 使用 result 字段作为响应")
             } else {
               responseText = String(data: data, encoding: .utf8) ?? "解析响应失败"
+              Logger.statistics.warning("AIQueryView: 未找到预期的响应字段，使用原始响应内容")
             }
-            
+
             Logger.statistics.info("AIQueryView: 使用备用字段解析得到响应文本，长度: \(responseText.count)")
             showResponse(responseText)
           }
@@ -541,21 +608,50 @@ class AIQueryView: NibLessView {
         }
       } catch {
         Logger.statistics.error("AIQueryView: JSON解析失败: \(error.localizedDescription)")
-        let responseText = String(data: data, encoding: .utf8) ?? "解析响应失败"
-        showError("响应解析错误")
+        Logger.statistics.debug("AIQueryView: 原始响应数据: \(String(data: data, encoding: .utf8) ?? "无法转换为字符串")")
+        showError("响应解析错误，请稍后重试")
       }
     } else {
       // 错误响应
       Logger.statistics.error("AIQueryView: 服务器响应错误，状态码: \(httpResponse.statusCode)")
-      
-      // 尝试解析错误信息
-      if let errorMessage = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-         let error = errorMessage["error"] as? String {
-        showError("服务器错误: \(error)")
-      } else {
-        let statusMessage = HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
-        showError("服务器响应错误: \(httpResponse.statusCode) - \(statusMessage)，请检查是否还有请求配额")
+
+      // 记录完整的错误响应内容用于调试
+      if let errorData = String(data: data, encoding: .utf8) {
+        Logger.statistics.debug("AIQueryView: 错误响应内容: \(errorData)")
       }
+
+      // 尝试解析错误信息
+      var errorMessage = "服务器响应错误"
+      if let errorJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+         let error = errorJSON["error"] as? String {
+        errorMessage = "服务器错误: \(error)"
+      } else {
+        switch httpResponse.statusCode {
+        case 400:
+          errorMessage = "请求参数错误(400)"
+        case 401:
+          errorMessage = "认证失败，请重新登录(401)"
+        case 403:
+          errorMessage = "权限不足(403)"
+        case 404:
+          errorMessage = "服务不存在(404)"
+        case 429:
+          errorMessage = "请求过于频繁，请稍后重试(429)"
+        case 500:
+          errorMessage = "服务器内部错误(500)"
+        case 502, 503, 504:
+          errorMessage = "服务器暂时不可用，请稍后重试(\(httpResponse.statusCode))"
+        default:
+          let statusMessage = HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+          errorMessage = "服务器响应错误: \(httpResponse.statusCode) - \(statusMessage)"
+        }
+
+        if httpResponse.statusCode == 429 || httpResponse.statusCode >= 500 {
+          errorMessage += "，请检查是否还有请求配额"
+        }
+      }
+
+      showError(errorMessage)
     }
   }
 
