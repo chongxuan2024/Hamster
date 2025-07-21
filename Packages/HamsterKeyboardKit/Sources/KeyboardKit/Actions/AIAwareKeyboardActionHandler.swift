@@ -109,6 +109,35 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
           Logger.statistics.debug("AIAwareKeyboardActionHandler: 原始字符 '\(char.char)' 已传递给AI查询视图")
           return
       }
+      
+      /// 上划手势处理
+      if case .swipeUp(let swipe) = gesture, isAIQueryModeActive {
+        // 获取上划手势对应的字符
+        if case let .character(char) = action {
+          _ = self.aiInputHandler?(char)
+          Logger.statistics.debug("AIAwareKeyboardActionHandler: 上划字符 '\(char)' 已传递给AI查询视图")
+          return
+        } else if case let .symbol(symbol) = action {
+          _ = self.aiInputHandler?(symbol.char)
+          Logger.statistics.debug("AIAwareKeyboardActionHandler: 上划符号 '\(symbol.char)' 已传递给AI查询视图")
+          return
+        }
+      }
+      
+      /// 下划手势处理
+      if case .swipeDown(let swipe) = gesture, isAIQueryModeActive {
+        // 获取下划手势对应的字符
+        if case let .character(char) = action {
+          _ = self.aiInputHandler?(char)
+          Logger.statistics.debug("AIAwareKeyboardActionHandler: 下划字符 '\(char)' 已传递给AI查询视图")
+          return
+        } else if case let .symbol(symbol) = action {
+          _ = self.aiInputHandler?(symbol.char)
+          Logger.statistics.debug("AIAwareKeyboardActionHandler: 下划符号 '\(symbol.char)' 已传递给AI查询视图")
+          return
+        }
+      }
+      
 
     // 继续正常的键盘处理流程
     super.handle(gesture, on: action, replaced: replaced)
