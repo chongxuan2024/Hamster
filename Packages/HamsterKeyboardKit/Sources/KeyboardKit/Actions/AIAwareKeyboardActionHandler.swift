@@ -59,10 +59,17 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
 
     // 如果是退格键且AI查询模式激活，优先路由到AI查询视图
     if gesture == .release, action == .backspace, isAIQueryModeActive {
-      if let handler = aiInputHandler, handler("\u{8}") {
-        Logger.statistics.debug("AIAwareKeyboardActionHandler: 退格键已被AI查询视图处理")
-        return // 输入已被AI查询视图处理，不再继续正常流程
-      }
+        
+        guard !rimeContext.userInputKey.isEmpty else {
+            if let handler = aiInputHandler, handler("\u{8}") {
+              Logger.statistics.debug("AIAwareKeyboardActionHandler: 退格键已被AI查询视图处理")
+              return // 输入已被AI查询视图处理，不再继续正常流程
+            }
+
+          return
+        }
+        
+
     }
 
     // 继续正常的键盘处理流程

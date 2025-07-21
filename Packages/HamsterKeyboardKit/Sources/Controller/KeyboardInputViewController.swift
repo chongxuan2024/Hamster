@@ -117,7 +117,7 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
       keyboardRootView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       keyboardRootView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
     ])
-    
+
     // 保存键盘根视图的引用以便后续访问AI查询功能
     self.keyboardRootView = keyboardRootView
   }
@@ -354,18 +354,18 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
       keyboardFeedbackHandler: self.keyboardFeedbackHandler,
       spaceDragGestureHandler: self.spaceDragGestureHandler
     )
-    
+
     // 设置AI查询输入处理回调
     if let aiHandler = handler as? AIAwareKeyboardActionHandler {
       aiHandler.aiInputHandler = { [weak self] character in
         guard let self = self,
               let rootView = self.keyboardRootView else { return false }
-        
+
         // 将键盘输入路由到KeyboardRootView的AI查询功能
         return rootView.handleKeyInput(character)
       }
     }
-    
+
     return handler
   }()
 
@@ -412,7 +412,7 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
 
    You can replace this with a custom implementation.
 
-   您可以用自定义实现来替代它。  
+   您可以用自定义实现来替代它。
    */
   public lazy var spaceDragGestureHandler: DragGestureHandler = SpaceCursorDragGestureHandler(
     feedbackHandler: keyboardFeedbackHandler,
@@ -492,12 +492,15 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
   }
 
   open func deleteBackward() {
-    // 如果AI查询视图正在显示，忽略删除操作
-    if let rootView = keyboardRootView, rootView.isAIQueryViewDisplaying() {
-      return
-    }
-      
+
+
     guard !rimeContext.userInputKey.isEmpty else {
+
+        // 如果AI查询视图正在显示，忽略删除操作
+        if let rootView = keyboardRootView, rootView.isAIQueryViewDisplaying() {
+          return
+        }
+
       // 获取光标前后上下文，用于删除需要光标居中的符号
       let beforeInput = self.textDocumentProxy.documentContextBeforeInput ?? ""
       let afterInput = self.textDocumentProxy.documentContextAfterInput ?? ""

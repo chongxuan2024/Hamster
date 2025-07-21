@@ -37,7 +37,7 @@ open class StandardKeyboardActionHandler: NSObject, KeyboardActionHandler {
 
   /// 空格拖动手势的激活位置
   private var spaceDragActivationLocation: CGPoint?
-  private var rimeContext: RimeContext
+  public var rimeContext: RimeContext
 
   // MARK: - Initialization
 
