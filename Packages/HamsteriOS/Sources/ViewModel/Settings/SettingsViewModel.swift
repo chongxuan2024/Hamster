@@ -103,6 +103,23 @@ public class SettingsViewModel: ObservableObject {
   /// 设置选项
   public lazy var sections: [SettingSectionModel] = {
     let sections = [
+      SettingSectionModel(title: "账号设置", items: [
+        .init(
+          icon: UIImage(systemName: "person.circle")!,
+          text: "个人信息",
+          accessoryType: .disclosureIndicator,
+          navigationLinkLabel: { [unowned self] in 
+            if UserManager.shared.isLoggedIn {
+              return UserManager.shared.currentUser?.username ?? "已登录"
+            } else {
+              return "未登录"
+            }
+          },
+          navigationAction: { [unowned self] in
+            self.mainViewModel.subViewSubject.send(.userProfile)
+          }
+        ),
+      ]),
 //      SettingSectionModel(title: "输入相关", items: [
 //        .init(
 //          icon: UIImage(systemName: "highlighter")!.withTintColor(.yellow),

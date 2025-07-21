@@ -345,4 +345,19 @@ extension HamsterAppDependencyContainer: SubViewControllerFactory {
     )
     return aboutViewController
   }
+
+  /// 创建用户资料页面控制器
+  /// - Returns: 用户资料页面控制器实例
+  func makeUserProfileViewController() -> UserProfileViewController {
+    Logger.statistics.debug("HamsterAppDependencyContainer: 创建UserProfileViewController")
+    
+    // 创建用户资料ViewModel
+    let userProfileViewModel = UserProfileViewModel()
+    
+    // 创建用户资料控制器
+    let userProfileViewController = UserProfileViewController(userProfileViewModel: userProfileViewModel)
+    
+    Logger.statistics.info("HamsterAppDependencyContainer: UserProfileViewController创建成功")
+    return userProfileViewController
+  }
 }

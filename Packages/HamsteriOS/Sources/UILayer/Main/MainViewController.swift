@@ -21,6 +21,7 @@ protocol SubViewControllerFactory {
   func makeBackupViewController() -> BackupViewController
   func makeAboutViewController() -> AboutViewController
   func makeRimeViewController() -> RimeViewController
+  func makeUserProfileViewController() -> UserProfileViewController
 }
 
 open class MainViewController: UISplitViewController {
@@ -57,6 +58,9 @@ open class MainViewController: UISplitViewController {
 
   private lazy var aboutViewController: AboutViewController
     = subViewControllerFactory.makeAboutViewController()
+
+  private lazy var userProfileViewController: UserProfileViewController
+    = subViewControllerFactory.makeUserProfileViewController()
 
   private lazy var primaryNavigationViewController: UINavigationController = {
     let vc = UINavigationController(rootViewController: settingsViewController)
@@ -161,6 +165,8 @@ extension MainViewController {
       presentAboutViewController()
     case .main:
       presentMainViewController()
+    case .userProfile:
+      presentUserProfileViewController()
     default:
       return
     }
@@ -208,6 +214,10 @@ extension MainViewController {
 
   func presentAboutViewController() {
     presentViewController(aboutViewController)
+  }
+
+  func presentUserProfileViewController() {
+    presentViewController(userProfileViewController)
   }
 
   private func presentViewController(_ vc: UIViewController) {

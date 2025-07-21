@@ -42,6 +42,8 @@ public enum SettingsSubView: String {
   /// 主页面
   case main
 
+  /// 用户资料页面
+  case userProfile
 
   /// 空页面
   case none
