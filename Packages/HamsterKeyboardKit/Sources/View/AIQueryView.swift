@@ -466,7 +466,7 @@ class AIQueryView: NibLessView {
 
     // 键盘扩展网络请求特殊配置
     request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-    request.timeoutInterval = 45.0
+    request.timeoutInterval = 90.0
 
     Logger.statistics.debug("AIQueryView: 键盘扩展网络请求配置完成 - Authorization: \(currentUser.token.prefix(20))..., openid: \(currentUser.username)")
 
