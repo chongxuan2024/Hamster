@@ -40,7 +40,7 @@ public struct KeyboardToolbarConfiguration: Codable, Hashable {
   public var candidateCommentFontSize: Int?
 
   /// 显示候选文字索引
-  public var displayIndexOfCandidateWord: Bool?
+    public var displayIndexOfCandidateWord: Bool = true;
 
   /// 显示候选文字 Comment 信息
   public var displayCommentOfCandidateWord: Bool?
@@ -72,7 +72,7 @@ public struct KeyboardToolbarConfiguration: Codable, Hashable {
     self.candidateLabelFontSize = candidateLabelFontSize
     self.candidateWordFontSize = candidateWordFontSize
     self.candidateCommentFontSize = candidateCommentFontSize
-    self.displayIndexOfCandidateWord = displayIndexOfCandidateWord
+    self.displayCommentOfCandidateWord = displayIndexOfCandidateWord
     self.displayCommentOfCandidateWord = displayCommentOfCandidateWord
     self.swipePaging = swipePaging
   }
@@ -88,7 +88,7 @@ public struct KeyboardToolbarConfiguration: Codable, Hashable {
     self.codingAreaFontSize = try container.decodeIfPresent(Int.self, forKey: .codingAreaFontSize)
     self.candidateWordFontSize = try container.decodeIfPresent(Int.self, forKey: .candidateWordFontSize)
     self.candidateCommentFontSize = try container.decodeIfPresent(Int.self, forKey: .candidateCommentFontSize)
-    self.displayIndexOfCandidateWord = try container.decodeIfPresent(Bool.self, forKey: .displayIndexOfCandidateWord)
+    self.displayCommentOfCandidateWord = try container.decodeIfPresent(Bool.self, forKey: .displayIndexOfCandidateWord)
     self.displayCommentOfCandidateWord = try container.decodeIfPresent(Bool.self, forKey: .displayCommentOfCandidateWord)
     self.swipePaging = try container.decodeIfPresent(Bool.self, forKey: .swipePaging)
   }

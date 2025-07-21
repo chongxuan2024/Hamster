@@ -130,14 +130,14 @@ public class SettingsViewModel: ObservableObject {
 //        ),
 //      ]),
       SettingSectionModel(title: "键盘相关", items: [
-        .init(
-          icon: UIImage(systemName: "keyboard")!,
-          text: "键盘设置",
-          accessoryType: .disclosureIndicator,
-          navigationAction: { [unowned self] in
-            self.mainViewModel.subViewSubject.send(.keyboardSettings)
-          }
-        ),
+//        .init(
+//          icon: UIImage(systemName: "keyboard")!,
+//          text: "键盘设置",
+//          accessoryType: .disclosureIndicator,
+//          navigationAction: { [unowned self] in
+//            self.mainViewModel.subViewSubject.send(.keyboardSettings)
+//          }
+//        ),
 //        .init(
 //          icon: UIImage(systemName: "paintpalette")!,
 //          text: "键盘配色",

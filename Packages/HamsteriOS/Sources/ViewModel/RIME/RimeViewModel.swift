@@ -62,21 +62,21 @@ public class RimeViewModel {
   }
 
   lazy var settings: [SettingSectionModel] = [
-    .init(
-      title: "简繁切换",
-      footer: "配置文件中`switches`简繁转换选项的配置名称，仓用于中文简体与繁体之间快速切换。",
-      items: [
-        .init(
-          icon: UIImage(systemName: "square.and.pencil"),
-          placeholder: "简繁切换键值",
-          type: .textField,
-          textValue: { [unowned self] in keyValueOfSwitchSimplifiedAndTraditional },
-          textHandled: { [unowned self] in
-            keyValueOfSwitchSimplifiedAndTraditional = $0
-          }
-        ),
-      ]
-    ),
+//    .init(
+//      title: "简繁切换",
+//      footer: "配置文件中`switches`简繁转换选项的配置名称，仓用于中文简体与繁体之间快速切换。",
+//      items: [
+//        .init(
+//          icon: UIImage(systemName: "square.and.pencil"),
+//          placeholder: "简繁切换键值",
+//          type: .textField,
+//          textValue: { [unowned self] in keyValueOfSwitchSimplifiedAndTraditional },
+//          textHandled: { [unowned self] in
+//            keyValueOfSwitchSimplifiedAndTraditional = $0
+//          }
+//        ),
+//      ]
+//    ),
     .init(
       footer: "如果您未使用自造词功能，请保持保持默认开启状态。",
       items: [
@@ -90,18 +90,18 @@ public class RimeViewModel {
         ),
       ]
     ),
-    .init(
-      items: [
-        .init(
-          text: "RIME 日志",
-          accessoryType: .disclosureIndicator,
-          type: .navigation,
-          navigationAction: { [unowned self] in
-            openRimeLoggerViewSubject.send(true)
-          }
-        ),
-      ]
-    ),
+//    .init(
+//      items: [
+//        .init(
+//          text: "RIME 日志",
+//          accessoryType: .disclosureIndicator,
+//          type: .navigation,
+//          navigationAction: { [unowned self] in
+//            openRimeLoggerViewSubject.send(true)
+//          }
+//        ),
+//      ]
+//    ),
     .init(
       items: [
         .init(
@@ -117,28 +117,28 @@ public class RimeViewModel {
         ),
       ]
     ),
-    .init(
-      footer: """
-      注意：
-      1. RIME同步自定义参数，需要手工添加至Rime目录下的`installation.yaml`文件中(如果没有，需要则自行创建)；
-      2. 同步配置示例：(点击可复制)
-      ```
-      \(Self.rimeSyncConfigSample)
-      ```
-      """,
-      items: [
-        .init(
-          text: "RIME同步",
-          type: .button,
-          buttonAction: { [unowned self] in
-            Task {
-              await rimeSync()
-            }
-          },
-          favoriteButton: .rimeSync
-        ),
-      ]
-    ),
+//    .init(
+//      footer: """
+//      注意：
+//      1. RIME同步自定义参数，需要手工添加至Rime目录下的`installation.yaml`文件中(如果没有，需要则自行创建)；
+//      2. 同步配置示例：(点击可复制)
+//      ```
+//      \(Self.rimeSyncConfigSample)
+//      ```
+//      """,
+//      items: [
+//        .init(
+//          text: "RIME同步",
+//          type: .button,
+//          buttonAction: { [unowned self] in
+//            Task {
+//              await rimeSync()
+//            }
+//          },
+//          favoriteButton: .rimeSync
+//        ),
+//      ]
+//    ),
     .init(items: [
       .init(
         text: "RIME重置",

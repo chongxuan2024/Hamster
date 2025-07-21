@@ -35,7 +35,6 @@ extension HamsterConfiguration {
       displayChineseEnglishSwitchButton: true,
       chineseEnglishSwitchButtonIsOnLeftOfSpaceButton: true,
       enableNineGridOfNumericKeyboard: true,
-      enterDirectlyOnScreenByNineGridOfNumericKeyboard: true,
       symbolsOfGridOfNumericKeyboard: ["+", "-", "*", "/"],
       lockShiftState: true,
       enableEmbeddedInputMode: true,

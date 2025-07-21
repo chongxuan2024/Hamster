@@ -18,7 +18,7 @@ class AboutRootView: NibLessView {
     let imageView = UIImageView(frame: .zero)
     imageView.contentMode = .scaleAspectFit
     imageView.clipsToBounds = true
-    imageView.image = UIImage(named: "Hamster", in: .main, with: .none)
+    imageView.image = UIImage(named: "AppIcon", in: .main, with: .none)
     return imageView
   }()
 
@@ -27,7 +27,7 @@ class AboutRootView: NibLessView {
     hStack.axis = .horizontal
     hStack.alignment = .center
     hStack.distribution = .equalCentering
-    hStack.addArrangedSubview(logoImageView)
+//    hStack.addArrangedSubview(logoImageView)
 
     hStack.translatesAutoresizingMaskIntoConstraints = true
     hStack.heightAnchor.constraint(equalToConstant: 60).isActive = true
@@ -36,7 +36,7 @@ class AboutRootView: NibLessView {
 
   lazy var titleLabel: UILabel = {
     let titleLabel = UILabel(frame: .zero)
-    titleLabel.text = "仓输入法"
+    titleLabel.text = "AI 输入法"
     titleLabel.font = UIFont.preferredFont(forTextStyle: .title2)
     return titleLabel
   }()
