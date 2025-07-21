@@ -1,8 +1,8 @@
-/* 
+/*
   InfoPlist.strings
   Hamster
 
   Created by morse on 2023/11/16.
-  
+
 */
-"CFBundleDisplayName" = "仓输入法";
+"CFBundleDisplayName" = "AI输入法";
