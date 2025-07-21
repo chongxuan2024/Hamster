@@ -59,7 +59,7 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
 
     // 如果是退格键且AI查询模式激活，优先路由到AI查询视图
     if gesture == .release, action == .backspace, isAIQueryModeActive {
-        
+
         guard !rimeContext.userInputKey.isEmpty else {
             if let handler = aiInputHandler, handler("\u{8}") {
               Logger.statistics.debug("AIAwareKeyboardActionHandler: 退格键已被AI查询视图处理")
@@ -68,22 +68,33 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
 
           return
         }
-        
+
     }
-      
+
+    // 如果是长按删除键且AI查询模式激活，清空AI查询视图文本
+    if gesture == .longPress, action == .backspace, isAIQueryModeActive {
+            guard !rimeContext.userInputKey.isEmpty else {
+                  if let handler = aiInputHandler, handler("\u{1B}[2J") { // 使用明确的清空指令
+                    Logger.statistics.debug("AIAwareKeyboardActionHandler: 长按删除键清空AI查询视图文本")
+                    return // 输入已被AI查询视图处理，不再继续正常流程
+                  }
+              return
+            }
+    }
+
       // 如果是空格键且AI查询模式激活，优先路由到AI查询视图
       if gesture == .release, action == .space, isAIQueryModeActive {
-          
+
           guard !rimeContext.userInputKey.isEmpty else {
               if let handler = aiInputHandler, handler(" ") {
                 Logger.statistics.debug("AIAwareKeyboardActionHandler: 空格键已被AI查询视图处理")
                 return // 输入已被AI查询视图处理，不再继续正常流程
               }
-              return 
+              return
           }
       }
-      
-      
+
+
 
     // 继续正常的键盘处理流程
     super.handle(gesture, on: action, replaced: replaced)
