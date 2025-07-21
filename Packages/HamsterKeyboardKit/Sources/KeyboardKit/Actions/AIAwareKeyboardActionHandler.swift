@@ -94,7 +94,14 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
           }
       }
 
-
+      // TODO 处理完成后，如果是字符输入且AI查询模式激活，尝试将RIME处理后的结果传递给AI查询视图
+      if gesture == .release, case let .symbol(char) = action, isAIQueryModeActive {
+        // 通过延迟调用确保RIME引擎已经处理完成
+          // 如果没有RIME处理，直接传递原始字符（处理英文输入）
+          _ = self.aiInputHandler?(char.char)
+          Logger.statistics.debug("AIAwareKeyboardActionHandler: 原始字符 '\(char.char)' 已传递给AI查询视图")
+          return
+      }
 
     // 继续正常的键盘处理流程
     super.handle(gesture, on: action, replaced: replaced)
@@ -124,13 +131,7 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
       }
     }
 
-      // TODO 处理完成后，如果是字符输入且AI查询模式激活，尝试将RIME处理后的结果传递给AI查询视图
-      if gesture == .release, case let .symbol(char) = action, isAIQueryModeActive {
-        // 通过延迟调用确保RIME引擎已经处理完成
-          // 如果没有RIME处理，直接传递原始字符（处理英文输入）
-          _ = self.aiInputHandler?(char.char)
-          Logger.statistics.debug("AIAwareKeyboardActionHandler: 原始字符 '\(char.char)' 已传递给AI查询视图")
-      }
+
 
   }
 }
