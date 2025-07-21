@@ -38,8 +38,14 @@ class AIQueryView: NibLessView {
   /// 当前响应内容
   private var currentResponse: String = ""
 
+  /// 当前会话ID
+  private var currentSessionId: String = ""
+
   /// AI查询模式是否激活（用于外部键盘输入处理）
   private var isAIInputActive: Bool = false
+
+  /// 跨target共享用户管理器
+  private let sharedUserManager = SharedUserManager.shared
 
   // MARK: - UI Components
 
@@ -370,12 +376,19 @@ class AIQueryView: NibLessView {
     queryTextField.resignFirstResponder()
     isAIInputActive = false
 
-    performQuery()
+    performQuery(originalQuery: queryText)
   }
 
   @objc private func regenerateButtonTapped() {
     Logger.statistics.info("AIQueryView: 用户点击重新生成按钮")
-    performQuery()
+    
+    guard let queryText = queryTextField.text,
+          !queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      Logger.statistics.warning("AIQueryView: 查询文本为空，无法重新生成")
+      return
+    }
+    
+    performQuery(originalQuery: queryText, isRegenerate: true)
   }
 
   @objc private func insertButtonTapped() {
@@ -392,13 +405,22 @@ class AIQueryView: NibLessView {
 
   // MARK: - Private Methods
 
-  private func performQuery() {
-    guard let queryText = queryTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-          !queryText.isEmpty else {
+  private func performQuery(originalQuery: String, isRegenerate: Bool = false) {
+    Logger.statistics.info("AIQueryView: 开始执行查询，查询文本: '\(originalQuery)'，是否重新生成: \(isRegenerate)")
+
+    // 检查用户登录状态
+    guard sharedUserManager.isLoggedIn else {
+      Logger.statistics.warning("AIQueryView: 用户未登录，无法执行AI查询")
+      showError("请先登录")
       return
     }
 
-    Logger.statistics.info("AIQueryView: 开始执行查询，查询文本: '\(queryText)'")
+    // 获取当前用户信息
+    guard let currentUser = sharedUserManager.currentUser else {
+      Logger.statistics.error("AIQueryView: 无法获取当前用户信息")
+      showError("获取用户信息失败")
+      return
+    }
 
     // 取消之前的请求
     currentTask?.cancel()
@@ -417,16 +439,28 @@ class AIQueryView: NibLessView {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    
+    // 添加认证请求头
+    request.setValue(currentUser.token, forHTTPHeaderField: "Authorization")
+    request.setValue(currentUser.username, forHTTPHeaderField: "openid")
 
-    // 构建请求体
-    let requestBody: [String: Any] = [
-      "query": queryText,
-      "timestamp": Date().timeIntervalSince1970
+    // 构建请求体 - 根据Kotlin代码的格式
+    let targetContent = isRegenerate ? "回答不满意，请重新生成" : originalQuery
+    var requestBody: [String: Any] = [
+      "question": targetContent
     ]
+    
+    // 添加会话ID（如果存在）
+    if !currentSessionId.isEmpty {
+      requestBody["lastSessionId"] = currentSessionId
+    }
+    
+    // 可选：添加知识库ID（暂时注释，根据需要启用）
+    // requestBody["knowledgeBaseIds"] = knowledgeBaseIds
 
     do {
       request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-      Logger.statistics.debug("AIQueryView: 请求体构建成功")
+      Logger.statistics.debug("AIQueryView: 请求体构建成功，包含字段: \(requestBody.keys)")
     } catch {
       Logger.statistics.error("AIQueryView: 请求体构建失败: \(error.localizedDescription)")
       hideLoadingState()
@@ -442,7 +476,7 @@ class AIQueryView: NibLessView {
     }
 
     currentTask?.resume()
-    Logger.statistics.info("AIQueryView: HTTP请求已发送")
+    Logger.statistics.info("AIQueryView: HTTP请求已发送，用户: \(currentUser.username)")
   }
 
   private func handleQueryResponse(data: Data?, response: URLResponse?, error: Error?) {
@@ -454,43 +488,74 @@ class AIQueryView: NibLessView {
       return
     }
 
+    guard let httpResponse = response as? HTTPURLResponse else {
+      Logger.statistics.error("AIQueryView: 无效的HTTP响应")
+      showError("无效的响应")
+      return
+    }
+
     guard let data = data else {
       Logger.statistics.error("AIQueryView: 响应数据为空")
       showError("响应数据为空")
       return
     }
 
-    Logger.statistics.info("AIQueryView: 收到响应数据，大小: \(data.count) bytes")
+    Logger.statistics.info("AIQueryView: 收到响应，状态码: \(httpResponse.statusCode)，数据大小: \(data.count) bytes")
 
-    do {
-      if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-        Logger.statistics.debug("AIQueryView: JSON解析成功")
+    if httpResponse.statusCode == 200 {
+      // 成功响应
+      do {
+        if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+          Logger.statistics.debug("AIQueryView: JSON解析成功")
 
-        // 这里根据实际API响应格式调整
-        var responseText = ""
-        if let content = jsonObject["content"] as? String {
-          responseText = content
-        } else if let answer = jsonObject["answer"] as? String {
-          responseText = answer
-        } else if let result = jsonObject["result"] as? String {
-          responseText = result
+          // 根据Kotlin代码的响应格式解析
+          if let sessionId = jsonObject["sessionId"] as? String {
+            currentSessionId = sessionId
+            Logger.statistics.debug("AIQueryView: 更新会话ID: \(sessionId)")
+          }
+
+          if let aiReply = jsonObject["text"] as? String {
+            Logger.statistics.info("AIQueryView: 解析得到AI回复，长度: \(aiReply.count)")
+            showResponse(aiReply)
+          } else {
+            // 如果没有找到 text 字段，尝试其他可能的字段
+            var responseText = ""
+            if let content = jsonObject["content"] as? String {
+              responseText = content
+            } else if let answer = jsonObject["answer"] as? String {
+              responseText = answer
+            } else if let result = jsonObject["result"] as? String {
+              responseText = result
+            } else {
+              responseText = String(data: data, encoding: .utf8) ?? "解析响应失败"
+            }
+            
+            Logger.statistics.info("AIQueryView: 使用备用字段解析得到响应文本，长度: \(responseText.count)")
+            showResponse(responseText)
+          }
         } else {
-          // 如果没有找到预期字段，将整个响应作为字符串
-          responseText = String(data: data, encoding: .utf8) ?? "解析响应失败"
+          // 如果不是JSON格式，直接显示文本
+          let responseText = String(data: data, encoding: .utf8) ?? "无法解析响应"
+          Logger.statistics.info("AIQueryView: 非JSON响应，直接显示文本，长度: \(responseText.count)")
+          showResponse(responseText)
         }
-
-        Logger.statistics.info("AIQueryView: 解析得到响应文本，长度: \(responseText.count)")
-        showResponse(responseText)
-      } else {
-        // 如果不是JSON格式，直接显示文本
-        let responseText = String(data: data, encoding: .utf8) ?? "无法解析响应"
-        Logger.statistics.info("AIQueryView: 非JSON响应，直接显示文本，长度: \(responseText.count)")
-        showResponse(responseText)
+      } catch {
+        Logger.statistics.error("AIQueryView: JSON解析失败: \(error.localizedDescription)")
+        let responseText = String(data: data, encoding: .utf8) ?? "解析响应失败"
+        showError("响应解析错误")
       }
-    } catch {
-      Logger.statistics.error("AIQueryView: JSON解析失败: \(error.localizedDescription)")
-      let responseText = String(data: data, encoding: .utf8) ?? "解析响应失败"
-        showResponse("解析响应失败")
+    } else {
+      // 错误响应
+      Logger.statistics.error("AIQueryView: 服务器响应错误，状态码: \(httpResponse.statusCode)")
+      
+      // 尝试解析错误信息
+      if let errorMessage = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+         let error = errorMessage["error"] as? String {
+        showError("服务器错误: \(error)")
+      } else {
+        let statusMessage = HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+        showError("服务器响应错误: \(httpResponse.statusCode) - \(statusMessage)，请检查是否还有请求配额")
+      }
     }
   }
 
