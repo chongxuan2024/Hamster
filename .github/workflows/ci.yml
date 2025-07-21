@@ -25,7 +25,44 @@ jobs:
 
       - name: Un-tar Frameworks
         run: |
-          tar -xzf Frameworks.tgz -C Frameworks/..
+          echo "Extracting Frameworks.tgz..."
+          tar -xzf Frameworks.tgz
+          echo "Frameworks extraction completed"
+          
+      - name: Verify Frameworks
+        run: |
+          echo "Verifying extracted frameworks..."
+          ls -la Frameworks/ || echo "Frameworks directory not found"
+          echo "Required frameworks check:"
+          required_frameworks=(
+            "boost_atomic.xcframework"
+            "boost_filesystem.xcframework" 
+            "boost_regex.xcframework"
+            "boost_system.xcframework"
+            "libglog.xcframework"
+            "libleveldb.xcframework"
+            "libmarisa.xcframework"
+            "libopencc.xcframework"
+            "librime.xcframework"
+            "libyaml-cpp.xcframework"
+          )
+          
+          missing_frameworks=()
+          for framework in "${required_frameworks[@]}"; do
+            if [ -d "Frameworks/$framework" ]; then
+              echo "✓ $framework exists"
+            else
+              echo "✗ $framework missing"
+              missing_frameworks+=("$framework")
+            fi
+          done
+          
+          if [ ${#missing_frameworks[@]} -ne 0 ]; then
+            echo "Missing frameworks: ${missing_frameworks[*]}"
+            echo "Available frameworks:"
+            find Frameworks -name "*.xcframework" -type d | sort
+            exit 1
+          fi
 
       - name: Build Schemas
         run: |
@@ -34,8 +71,13 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s "/Applications/Xcode_15.0.1.app"
 
+      - name: Clean Build Folder
+        run: |
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          
       - name: Compile
         run: |
+          xcodebuild clean -project Hamster.xcodeproj -scheme Hamster -configuration Release
           xcodebuild archive -archivePath "Hamster" -scheme "Hamster" -sdk "iphoneos" -arch arm64 -configuration Release CODE_SIGNING_ALLOWED=NO
           BUILT_PATH=$(find Hamster.xcarchive -name '*.app' -type d | head -1)
           find "$BUILT_PATH" -type d -path '*/Frameworks/*.dylib' -exec codesign --force --sign - --timestamp=none \{\} \;
