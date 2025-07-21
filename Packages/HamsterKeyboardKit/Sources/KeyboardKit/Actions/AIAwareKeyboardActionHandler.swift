@@ -11,21 +11,21 @@ import UIKit
 
 /**
  支持AI查询功能的键盘动作处理器
- 
+
  这个处理器包装了StandardKeyboardActionHandler，并添加了对AI查询视图的键盘输入路由功能。
  当AI查询模式激活时，字符输入会被路由到AI查询视图，而不是正常的文本输入。
  */
 public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
-  
+
   /// AI查询视图的键盘输入处理回调
   public var aiInputHandler: ((String) -> Bool)?
-  
+
   /// AI查询模式是否激活
   private var isAIQueryModeActive: Bool = false
-  
+
   /// RIME上下文引用
   private let rimeContextRef: RimeContext
-  
+
   public override init(
     controller: KeyboardController?,
     keyboardContext: KeyboardContext,
@@ -47,16 +47,16 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
     )
     Logger.statistics.debug("AIAwareKeyboardActionHandler: 初始化AI感知键盘动作处理器")
   }
-  
+
   /// 设置AI查询模式状态
   public func setAIQueryMode(active: Bool) {
     isAIQueryModeActive = active
     Logger.statistics.debug("AIAwareKeyboardActionHandler: AI查询模式状态: \(active)")
   }
-  
+
   public override func handle(_ gesture: KeyboardGesture, on action: KeyboardAction, replaced: Bool) {
 //    Logger.statistics.debug("AIAwareKeyboardActionHandler: 处理手势 \(gesture) 操作 \(action)")
-    
+
     // 如果是退格键且AI查询模式激活，优先路由到AI查询视图
     if gesture == .release, action == .backspace, isAIQueryModeActive {
       if let handler = aiInputHandler, handler("\u{8}") {
@@ -64,16 +64,18 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
         return // 输入已被AI查询视图处理，不再继续正常流程
       }
     }
-    
+
     // 继续正常的键盘处理流程
     super.handle(gesture, on: action, replaced: replaced)
-    
+
+    // TODO 处理swapUp、swapDown的gesture
+
     // 处理完成后，如果是字符输入且AI查询模式激活，尝试将RIME处理后的结果传递给AI查询视图
     if gesture == .release, case let .character(char) = action, isAIQueryModeActive {
       // 通过延迟调用确保RIME引擎已经处理完成
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self] in
         guard let self = self else { return }
-        
+
         // 获取RIME处理后的提交文本，如果有的话传递给AI查询视图
         let commitText = self.rimeContextRef.commitText
         if !commitText.isEmpty {
@@ -90,5 +92,14 @@ public class AIAwareKeyboardActionHandler: StandardKeyboardActionHandler {
         }
       }
     }
+
+      // TODO 处理完成后，如果是字符输入且AI查询模式激活，尝试将RIME处理后的结果传递给AI查询视图
+      if gesture == .release, case let .symbol(char) = action, isAIQueryModeActive {
+        // 通过延迟调用确保RIME引擎已经处理完成
+          // 如果没有RIME处理，直接传递原始字符（处理英文输入）
+          _ = self.aiInputHandler?(char.char)
+          Logger.statistics.debug("AIAwareKeyboardActionHandler: 原始字符 '\(char.char)' 已传递给AI查询视图")
+      }
+
   }
 }

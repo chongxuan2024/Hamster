@@ -74,9 +74,9 @@ keyboard:
   spaceRightButtonProcessByRIME: true
   keyValueOfSpaceRightButton: "."
   # 启用中英切换按键
-  displayChineseEnglishSwitchButton: false
+  displayChineseEnglishSwitchButton: true
   # 按键位于空格左侧
-  chineseEnglishSwitchButtonIsOnLeftOfSpaceButton: false
+  chineseEnglishSwitchButtonIsOnLeftOfSpaceButton: true
   # 启用数字九宫格键盘
   enableNineGridOfNumericKeyboard: true
   # 数字九宫格键盘：数字键是否由 RIME 处理

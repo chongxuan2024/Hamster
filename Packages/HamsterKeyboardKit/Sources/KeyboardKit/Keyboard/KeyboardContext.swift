@@ -324,7 +324,8 @@ public class KeyboardContext: ObservableObject {
 
   /// 是否启用中英切换键
   var displayChineseEnglishSwitchButton: Bool {
-    hamsterConfiguration?.keyboard?.displayChineseEnglishSwitchButton ?? true
+//    hamsterConfiguration?.keyboard?.displayChineseEnglishSwitchButton ?? true
+      return true;
   }
 
   /// 空格左侧自定义按键
@@ -367,17 +368,20 @@ public class KeyboardContext: ObservableObject {
 
   /// 是否开启按键气泡
   var displayButtonBubbles: Bool {
-    (hamsterConfiguration?.keyboard?.displayButtonBubbles ?? false) && keyboardType.displayButtonBubbles
+//    (hamsterConfiguration?.keyboard?.displayButtonBubbles ?? false) && keyboardType.displayButtonBubbles
+      return true;
   }
 
   /// 工具栏应用图标按钮
   var displayAppIconButton: Bool {
-    hamsterConfiguration?.toolbar?.displayAppIconButton ?? false
+//    hamsterConfiguration?.toolbar?.displayAppIconButton ?? false
+    return false;
   }
 
   /// 工具栏键盘 dismiss 按键
   var displayKeyboardDismissButton: Bool {
-    hamsterConfiguration?.toolbar?.displayKeyboardDismissButton ?? false
+//    hamsterConfiguration?.toolbar?.displayKeyboardDismissButton ?? false
+    return false;
   }
 
   /// 数字九宫格符号列表
@@ -439,12 +443,14 @@ public class KeyboardContext: ObservableObject {
 
   /// 划动上下布局
   var swipeLabelUpAndDownLayout: Bool {
-    hamsterConfiguration?.keyboard?.swipeLabelUpAndDownLayout ?? false
+//    hamsterConfiguration?.keyboard?.swipeLabelUpAndDownLayout ?? false
+    return true;
   }
 
   /// 划动上下不规则布局
   var swipeLabelUpAndDownIrregularLayout: Bool {
-    hamsterConfiguration?.keyboard?.swipeLabelUpAndDownIrregularLayout ?? false
+//    hamsterConfiguration?.keyboard?.swipeLabelUpAndDownIrregularLayout ?? false
+    return true;
   }
 
   /// 自定义键盘
