@@ -1,91 +1,367 @@
-name: Build Test
+name: Build iOS App
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 触发条件
+#   - push / PR  到 main      → 触发 Job1: Debug 模拟器构建（无需签名证书）
+#   - push  tag  v*            → 触发 Job1 + Job2: Release 真机构建 + 签名 + IPA 导出
+# ──────────────────────────────────────────────────────────────────────────────
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    tags:     [ "v*" ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 全局常量（与 Xcode project.pbxproj Release 配置保持一致）
+# ──────────────────────────────────────────────────────────────────────────────
+env:
+  XCODE_VERSION:     "15.0.1"
+  PROJECT:           "Hamster.xcodeproj"
+  SCHEME:            "Hamster"
+  # Release 配置下各 Target 的 Bundle Identifier
+  BUNDLE_ID_MAIN:     "dev.fuxiao.app.Hamster"
+  BUNDLE_ID_KEYBOARD: "dev.fuxiao.app.Hamster.HamsterKeyboard"
 
 jobs:
-  build:
+  # ============================================================================
+  # Job 1 ── Debug 构建（iOS 模拟器，无需任何签名证书）
+  #          适用场景：PR 检查、日常 push 验证代码可编译
+  # ============================================================================
+  build-debug:
+    name: "🔧 Debug · Simulator (no signing)"
     runs-on: macos-13
+
     steps:
+      # ── 拉取代码 ────────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: true   # 拉取 git submodule
 
-      - name: Download Frameworks
-        uses: robinraju/release-downloader@v1.7
-        with:
-          repository: "imfuxiao/LibrimeKit"
-          latest: true
-          fileName: "Frameworks.tgz"
+      # ── 切换 Xcode 版本 ──────────────────────────────────────────────────────
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: sudo xcode-select -s "/Applications/Xcode_${{ env.XCODE_VERSION }}.app"
 
-      - name: Un-tar Frameworks
-        run: |
-          echo "Extracting Frameworks.tgz..."
-          tar -xzf Frameworks.tgz
-          echo "Frameworks extraction completed"
-          
+      # ── 校验 Frameworks（已直接入库，无需下载）─────────────────────────────
       - name: Verify Frameworks
         run: |
-          echo "Verifying extracted frameworks..."
-          ls -la Frameworks/ || echo "Frameworks directory not found"
-          echo "Required frameworks check:"
-          required_frameworks=(
+          echo "── 校验 Frameworks/ 目录下的 xcframework ──"
+          required=(
             "boost_atomic.xcframework"
-            "boost_filesystem.xcframework" 
+            "boost_filesystem.xcframework"
+            "boost_locale.xcframework"
             "boost_regex.xcframework"
             "boost_system.xcframework"
+            "icudata.xcframework"
+            "icui18n.xcframework"
+            "icuio.xcframework"
+            "icuuc.xcframework"
             "libglog.xcframework"
             "libleveldb.xcframework"
             "libmarisa.xcframework"
             "libopencc.xcframework"
             "librime.xcframework"
+            "librime-sbxlm.xcframework"
             "libyaml-cpp.xcframework"
           )
-          
-          missing_frameworks=()
-          for framework in "${required_frameworks[@]}"; do
-            if [ -d "Frameworks/$framework" ]; then
-              echo "✓ $framework exists"
+          missing=()
+          for fw in "${required[@]}"; do
+            if [ -d "Frameworks/$fw" ]; then
+              echo "  ✓ $fw"
             else
-              echo "✗ $framework missing"
-              missing_frameworks+=("$framework")
+              echo "  ✗ $fw  ← MISSING"
+              missing+=("$fw")
             fi
           done
-          
-          if [ ${#missing_frameworks[@]} -ne 0 ]; then
-            echo "Missing frameworks: ${missing_frameworks[*]}"
-            echo "Available frameworks:"
-            find Frameworks -name "*.xcframework" -type d | sort
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo ""
+            echo "❌ 缺失 ${#missing[@]} 个 xcframework: ${missing[*]}"
+            echo "   原 LibrimeKit releases 已删除，Frameworks/ 目录内容已直接提交入库。"
+            echo "   请确认 git clone 完整，或检查 .gitignore 是否误忽略了 xcframework。"
             exit 1
           fi
+          echo "✅ 所有 xcframework 就绪"
 
+      # ── 编译输入方案（rime-ice 等）─────────────────────────────────────────
       - name: Build Schemas
-        run: |
-          make schema
+        run: make schema
 
-      - name: Select Xcode
-        run: sudo xcode-select -s "/Applications/Xcode_15.0.1.app"
+      # ── 清理 DerivedData 避免缓存污染 ───────────────────────────────────────
+      - name: Clean DerivedData
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
-      - name: Clean Build Folder
+      # ── 编译 Debug（模拟器，关闭签名）──────────────────────────────────────
+      - name: Build Debug (Simulator · 无签名)
         run: |
-          rm -rf ~/Library/Developer/Xcode/DerivedData/*
-          
-      - name: Compile
-        run: |
-          xcodebuild clean -project Hamster.xcodeproj -scheme Hamster -configuration Release
-          xcodebuild archive -archivePath "Hamster" -scheme "Hamster" -sdk "iphoneos" -arch arm64 -configuration Release CODE_SIGNING_ALLOWED=NO
-          BUILT_PATH=$(find Hamster.xcarchive -name '*.app' -type d | head -1)
-          find "$BUILT_PATH" -type d -path '*/Frameworks/*.dylib' -exec codesign --force --sign - --timestamp=none \{\} \;
-          codesign --force --sign - --entitlements "Hamster/Hamster.entitlements" --timestamp=none "$BUILT_PATH"
-          tar -acf Hamster.xcarchive.tgz Hamster.xcarchive
+          xcodebuild build \
+            -project "${{ env.PROJECT }}" \
+            -scheme  "${{ env.SCHEME }}" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build-debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
 
-      - name: Upload xcarchive
+      # ── 打包 .app 为 zip ────────────────────────────────────────────────────
+      - name: Package Debug .app
+        run: |
+          # 排除 PlugIns 子目录（里面是 extension 的 .appex，不是主 app）
+          APP_PATH=$(find build-debug -name "*.app" -not -path "*/PlugIns/*" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ 未找到 .app 编译产物"
+            exit 1
+          fi
+          echo "📦 打包: $APP_PATH"
+          zip -r Hamster-Debug-Simulator.zip "$APP_PATH"
+
+      # ── 上传 Debug 产物（保留 7 天）────────────────────────────────────────
+      - name: Upload Debug Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hamster-ios-arm64-xcarchive
+          name: Hamster-Debug-Simulator
+          path: Hamster-Debug-Simulator.zip
+          retention-days: 7
+
+  # ============================================================================
+  # Job 2 ── Release 构建（iOS 真机 arm64，正式签名，导出 IPA）
+  #          触发条件：仅当推送 v* tag 时执行
+  #
+  #  所需 GitHub Secrets（Settings → Secrets and variables → Actions）:
+  #    KEYCHAIN_PASSWORD                       临时 keychain 密码（任意字符串）
+  #    IOS_TEAM_ID                             Apple 开发者 Team ID（10位字母数字）
+  #    IOS_CERTIFICATE_BASE64                  发布证书 .p12 的 base64 编码
+  #    IOS_CERTIFICATE_PASSWORD                .p12 证书的保护密码
+  #    IOS_PROVISIONING_PROFILE_BASE64         主 App 描述文件 .mobileprovision 的 base64
+  #    IOS_KEYBOARD_PROVISIONING_PROFILE_BASE64 键盘扩展描述文件 .mobileprovision 的 base64
+  #    IOS_EXPORT_METHOD                       导出方式: app-store / ad-hoc / development
+  # ============================================================================
+  build-release:
+    name: "🚀 Release · Device + Signing + IPA"
+    runs-on: macos-13
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      # ── 拉取代码 ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # ── 切换 Xcode 版本 ──────────────────────────────────────────────────────
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: sudo xcode-select -s "/Applications/Xcode_${{ env.XCODE_VERSION }}.app"
+
+      # ── 校验 Frameworks ──────────────────────────────────────────────────────
+      - name: Verify Frameworks
+        run: |
+          required=(
+            "boost_atomic.xcframework"   "boost_filesystem.xcframework"
+            "boost_locale.xcframework"   "boost_regex.xcframework"
+            "boost_system.xcframework"   "icudata.xcframework"
+            "icui18n.xcframework"        "icuio.xcframework"
+            "icuuc.xcframework"          "libglog.xcframework"
+            "libleveldb.xcframework"     "libmarisa.xcframework"
+            "libopencc.xcframework"      "librime.xcframework"
+            "librime-sbxlm.xcframework"  "libyaml-cpp.xcframework"
+          )
+          missing=()
+          for fw in "${required[@]}"; do
+            [ -d "Frameworks/$fw" ] && echo "  ✓ $fw" || { echo "  ✗ $fw ← MISSING"; missing+=("$fw"); }
+          done
+          [ ${#missing[@]} -eq 0 ] && echo "✅ 所有 xcframework 就绪" || { echo "❌ 缺失: ${missing[*]}"; exit 1; }
+
+      # ── 编译输入方案 ─────────────────────────────────────────────────────────
+      - name: Build Schemas
+        run: make schema
+
+      # ── 清理 DerivedData ─────────────────────────────────────────────────────
+      - name: Clean DerivedData
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData/*
+
+      # ── 安装签名证书 + 描述文件 ──────────────────────────────────────────────
+      # 说明：
+      #   - 创建一个仅在本次 CI 会话中存在的临时 keychain，避免污染系统 keychain
+      #   - 将 .p12 证书导入 keychain，使 codesign 工具可以使用它
+      #   - 将两个 .mobileprovision 安装到 Provisioning Profiles 目录
+      #   - 提取 profile 名称和证书指纹供后续步骤使用
+      - name: Install Certificate & Provisioning Profiles
+        env:
+          CERTIFICATE_BASE64:       ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD:     ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_MAIN_BASE64:      ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          PROFILE_KEYBOARD_BASE64:  ${{ secrets.IOS_KEYBOARD_PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD:        ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # ── Step 1: 创建临时 keychain ─────────────────────────────────────
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain  -p "$KEYCHAIN_PASSWORD" build.keychain
+          # 设置 keychain 超时时间为 3600 秒，防止锁定
+          security set-keychain-settings -t 3600 -u build.keychain
+
+          # ── Step 2: 导入 .p12 分发证书 ───────────────────────────────────
+          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security import certificate.p12 \
+            -k build.keychain \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          # 授予 codesign 访问 keychain 的权限（避免弹出密码对话框）
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+          # ── Step 3: 安装主 App Provisioning Profile ───────────────────────
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+
+          echo "$PROFILE_MAIN_BASE64" | base64 --decode > profile_main.mobileprovision
+          MAIN_UUID=$(security cms -D -i profile_main.mobileprovision | plutil -extract UUID raw -)
+          MAIN_NAME=$(security cms -D -i profile_main.mobileprovision | plutil -extract Name raw -)
+          cp profile_main.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/${MAIN_UUID}.mobileprovision
+          echo "主 App Profile 安装成功: $MAIN_NAME  (UUID: $MAIN_UUID)"
+
+          # ── Step 4: 安装键盘扩展 Provisioning Profile ─────────────────────
+          echo "$PROFILE_KEYBOARD_BASE64" | base64 --decode > profile_keyboard.mobileprovision
+          KEYBOARD_UUID=$(security cms -D -i profile_keyboard.mobileprovision | plutil -extract UUID raw -)
+          KEYBOARD_NAME=$(security cms -D -i profile_keyboard.mobileprovision | plutil -extract Name raw -)
+          cp profile_keyboard.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/${KEYBOARD_UUID}.mobileprovision
+          echo "键盘扩展 Profile 安装成功: $KEYBOARD_NAME  (UUID: $KEYBOARD_UUID)"
+
+          # ── Step 5: 获取证书签名身份（SHA-1）────────────────────────────
+          CERT_IDENTITY=$(
+            security find-identity -v -p codesigning build.keychain \
+            | grep -E "Apple Distribution|iPhone Distribution" \
+            | head -1 | awk '{print $2}'
+          )
+          if [ -z "$CERT_IDENTITY" ]; then
+            echo "❌ 未在 keychain 中找到有效的 Distribution 证书，请检查 IOS_CERTIFICATE_BASE64"
+            security find-identity -v build.keychain
+            exit 1
+          fi
+          echo "证书 Identity: $CERT_IDENTITY"
+
+          # ── Step 6: 将变量写入 GITHUB_ENV 供后续步骤引用 ─────────────────
+          echo "MAIN_PROFILE_NAME=$MAIN_NAME"         >> $GITHUB_ENV
+          echo "KEYBOARD_PROFILE_NAME=$KEYBOARD_NAME" >> $GITHUB_ENV
+          echo "CERT_IDENTITY=$CERT_IDENTITY"         >> $GITHUB_ENV
+
+      # ── 打包 .xcarchive（归档阶段不签名，签名在 exportArchive 统一完成）─────
+      # 原因：xcodebuild archive 命令行无法方便地为不同 target 指定不同 profile，
+      #       通过 CODE_SIGNING_ALLOWED=NO 跳过归档签名，由 exportArchive 读取
+      #       exportOptions.plist 中的 provisioningProfiles 映射统一完成签名，
+      #       可精确控制每个 Bundle ID 对应的 profile。
+      - name: Archive (unsigned)
+        run: |
+          xcodebuild archive \
+            -project "${{ env.PROJECT }}" \
+            -scheme  "${{ env.SCHEME }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            -archivePath Hamster.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+
+      # ── 生成 exportOptions.plist ──────────────────────────────────────────
+      # 该文件告诉 xcodebuild -exportArchive：
+      #   - 用哪种方式导出（app-store / ad-hoc / development）
+      #   - 用哪个证书签名
+      #   - 每个 Bundle ID 对应哪个 Provisioning Profile
+      - name: Generate exportOptions.plist
+        run: |
+          cat > exportOptions.plist << 'EXPORT_EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>EXPORT_METHOD_PLACEHOLDER</string>
+              <key>teamID</key>
+              <string>TEAM_ID_PLACEHOLDER</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>signingCertificate</key>
+              <string>Apple Distribution</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>BUNDLE_ID_MAIN_PLACEHOLDER</key>
+                  <string>MAIN_PROFILE_PLACEHOLDER</string>
+                  <key>BUNDLE_ID_KEYBOARD_PLACEHOLDER</key>
+                  <string>KEYBOARD_PROFILE_PLACEHOLDER</string>
+              </dict>
+          </dict>
+          </plist>
+          EXPORT_EOF
+
+          # 用真实值替换占位符
+          sed -i'' \
+            -e "s|EXPORT_METHOD_PLACEHOLDER|${{ secrets.IOS_EXPORT_METHOD }}|g" \
+            -e "s|TEAM_ID_PLACEHOLDER|${{ secrets.IOS_TEAM_ID }}|g" \
+            -e "s|BUNDLE_ID_MAIN_PLACEHOLDER|${{ env.BUNDLE_ID_MAIN }}|g" \
+            -e "s|MAIN_PROFILE_PLACEHOLDER|$MAIN_PROFILE_NAME|g" \
+            -e "s|BUNDLE_ID_KEYBOARD_PLACEHOLDER|${{ env.BUNDLE_ID_KEYBOARD }}|g" \
+            -e "s|KEYBOARD_PROFILE_PLACEHOLDER|$KEYBOARD_PROFILE_NAME|g" \
+            exportOptions.plist
+
+          echo "── 最终 exportOptions.plist ──"
+          cat exportOptions.plist
+
+      # ── 导出 IPA（同时完成签名）─────────────────────────────────────────────
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath Hamster.xcarchive \
+            -exportPath  Hamster-Release \
+            -exportOptionsPlist exportOptions.plist
+          echo "── 导出产物 ──"
+          ls -lh Hamster-Release/
+
+      # ── 上传 IPA 产物（保留 30 天）──────────────────────────────────────────
+      - name: Upload Release IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hamster-Release-IPA
+          path: Hamster-Release/*.ipa
+          retention-days: 30
+
+      # ── 打包 xcarchive（可在 Xcode 中重新导出或 resign）────────────────────
+      - name: Package xcarchive
+        run: tar -acf Hamster.xcarchive.tgz Hamster.xcarchive
+
+      - name: Upload xcarchive Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hamster-xcarchive
           path: Hamster.xcarchive.tgz
+          retention-days: 30
+
+      # ── 创建 GitHub Release（仅 tag push 时）────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "仓输入法 ${{ github.ref_name }}"
+          body: |
+            ## 仓输入法 ${{ github.ref_name }}
+
+            ### 📦 安装方式
+            | 导出方式 | 安装途径 |
+            |----------|---------|
+            | `app-store` | TestFlight 内测 / App Store 正式发布 |
+            | `ad-hoc`    | AltStore / Sideloadly / iOS App Installer 等工具侧载 |
+            | `development` | Xcode 直接安装到已注册的开发设备 |
+
+            ### 📁 文件说明
+            | 文件 | 说明 |
+            |------|------|
+            | `Hamster-*.ipa` | iOS 安装包 |
+            | `Hamster.xcarchive.tgz` | Xcode 归档，可在 Xcode Organizer 中重新导出或 resign |
+
+            ### 📝 变更内容
+            详见 [Commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+          draft: false
+          prerelease: false
+          files: |
+            Hamster-Release/*.ipa
+            Hamster.xcarchive.tgz

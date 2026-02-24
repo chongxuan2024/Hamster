@@ -12,7 +12,7 @@ import OSLog
 public class UserAPIService {
   public static let shared = UserAPIService()
   
-  private let baseURL = "https://www.qingmiao.cloud/userapi/user"
+  private let baseURL = "https://www.idlab.top/userapi/user"
   private let session: URLSession
   
   private init() {

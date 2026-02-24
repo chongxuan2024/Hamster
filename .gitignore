@@ -23,10 +23,12 @@ xcuserdata/
 .HamsterInputSchemas/
 .tmp
 package/
-*.xcframework
+# xcframework 已直接提交入库，不再忽略
+# *.xcframework
 
 # VueJS
 /Packages/HamsterFileServer/Front/node_modules
 /Packages/HamsterFileServer/Front/dist/*
 /.idea/
 /build/
+/参考项目/

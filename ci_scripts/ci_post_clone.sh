@@ -4,20 +4,16 @@
 #  Hamster
 #
 #  Created by morse on 2023/9/28.
-#  
+#
 set -e
 
-OUTPUT="${CI_PRIMARY_REPOSITORY_PATH}/Frameworks"
-
-# 下载依赖的 librime framework
-LibrimeKitVersion="2.3.0"
-mkdir -p $OUTPUT
-rm -rf $OUTPUT/*.xcframwork && (
-  curl -OL https://github.com/imfuxiao/LibrimeKit/releases/download/${LibrimeKitVersion}/Frameworks.tgz
-  mkdir -p $OUTPUT
-  tar -zxf Frameworks.tgz -C $OUTPUT/..
-  rm -rf Frameworks.tgz
-)
+# ----------------------------------------------------------------
+# Frameworks 说明
+# ----------------------------------------------------------------
+# xcframework 文件已直接提交至 git 仓库的 Frameworks/ 目录中，
+# 原 https://github.com/imfuxiao/LibrimeKit/releases 下载地址已不可用。
+# CI clone 仓库后 Frameworks/ 目录即包含所有依赖，无需额外下载。
+# ----------------------------------------------------------------
 
 # 生成 SharedSupport.zip 与 rime-ice.zip
 OUTPUT="${CI_PRIMARY_REPOSITORY_PATH}/Resources/SharedSupport"

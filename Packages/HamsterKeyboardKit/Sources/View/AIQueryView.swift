@@ -429,7 +429,7 @@ class AIQueryView: NibLessView {
     showLoadingState()
 
     // 创建请求 - 使用IP地址避免DNS解析问题
-    let urlString = "https://www.qingmiao.cloud/userapi/knowledge/chatNew"
+    let urlString = "https://www.idlab.top/userapi/knowledge/chatNew"
     guard let url = URL(string: urlString) else {
       Logger.statistics.error("AIQueryView: 无效的请求URL")
       hideLoadingState()
